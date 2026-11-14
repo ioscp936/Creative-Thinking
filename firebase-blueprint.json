@@ -1,0 +1,156 @@
+{
+  "entities": {
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Public player ranking entry for the real-time global leaderboard without PII.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the player."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Public player nickname shown on the leaderboard."
+        },
+        "country": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 8,
+          "description": "Short country/region code such as VN, US, ES, JP."
+        },
+        "lang": {
+          "type": "string",
+          "enum": ["vi", "en", "es", "ja"],
+          "description": "Preferred UI language code."
+        },
+        "score": {
+          "type": "integer",
+          "description": "Cumulative puzzle score."
+        },
+        "levelsCleared": {
+          "type": "integer",
+          "description": "Total unique levels solved (0 to 500)."
+        },
+        "stars": {
+          "type": "integer",
+          "description": "Total stars earned (0 to 1500)."
+        },
+        "streak": {
+          "type": "integer",
+          "description": "Current consecutive solve streak."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether this entry appears on the public leaderboard."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of initial entry creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest score update."
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "country",
+        "lang",
+        "score",
+        "levelsCleared",
+        "stars",
+        "streak",
+        "isPublic",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserProgress": {
+      "title": "UserProgress",
+      "description": "Private cloud save state for a player's 500-level Creative Thinking journey.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "lang": {
+          "type": "string",
+          "enum": ["vi", "en", "es", "ja"]
+        },
+        "score": {
+          "type": "integer"
+        },
+        "bulbs": {
+          "type": "integer"
+        },
+        "currentLevelId": {
+          "type": "integer"
+        },
+        "streak": {
+          "type": "integer"
+        },
+        "practiceUnlocked": {
+          "type": "boolean"
+        },
+        "solvedIds": {
+          "type": "array",
+          "description": "List of solved puzzle IDs (1..500)."
+        },
+        "starsByLevel": {
+          "type": "object",
+          "description": "Map of levelId string to star rating (1..3)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "lang",
+        "score",
+        "bulbs",
+        "currentLevelId",
+        "streak",
+        "practiceUnlocked",
+        "solvedIds",
+        "starsByLevel",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/leaderboard/{userId}": {
+      "schema": { "$ref": "#/entities/LeaderboardEntry" },
+      "description": "Real-time global player leaderboard entries (strictly non-PII)."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProgress" },
+      "description": "Private player progress and save state scoped strictly to owner UID."
+    }
+  }
+}

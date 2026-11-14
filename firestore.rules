@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable Hardened Helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isValidLang(lang) {
+      return lang is string && lang in ['vi', 'en', 'es', 'ja'];
+    }
+
+    function isValidLeaderboardEntry(data) {
+      return data.keys().hasAll([
+        'uid', 'displayName', 'country', 'lang',
+        'score', 'levelsCleared', 'stars', 'streak',
+        'isPublic', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'uid', 'displayName', 'country', 'lang',
+        'score', 'levelsCleared', 'stars', 'streak',
+        'isPublic', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.uid)
+      && data.uid == request.auth.uid
+      && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 40
+      && data.country is string && data.country.size() >= 2 && data.country.size() <= 8
+      && isValidLang(data.lang)
+      && data.score is int && data.score >= 0 && data.score <= 1000000
+      && data.levelsCleared is int && data.levelsCleared >= 0 && data.levelsCleared <= 500
+      && data.stars is int && data.stars >= 0 && data.stars <= 1500
+      && data.streak is int && data.streak >= 0 && data.streak <= 500
+      && data.isPublic is bool;
+    }
+
+    function isValidUserProgress(data) {
+      return data.keys().hasAll([
+        'uid', 'displayName', 'lang', 'score', 'bulbs',
+        'currentLevelId', 'streak', 'practiceUnlocked',
+        'solvedIds', 'starsByLevel', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'uid', 'displayName', 'lang', 'score', 'bulbs',
+        'currentLevelId', 'streak', 'practiceUnlocked',
+        'solvedIds', 'starsByLevel', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.uid)
+      && data.uid == request.auth.uid
+      && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 40
+      && isValidLang(data.lang)
+      && data.score is int && data.score >= 0 && data.score <= 1000000
+      && data.bulbs is int && data.bulbs >= 0 && data.bulbs <= 9999
+      && data.currentLevelId is int && data.currentLevelId >= 1 && data.currentLevelId <= 500
+      && data.streak is int && data.streak >= 0 && data.streak <= 500
+      && data.practiceUnlocked is bool
+      && data.solvedIds is list && data.solvedIds.size() <= 500
+      && (data.solvedIds.size() == 0 || data.solvedIds[0] is int)
+      && data.starsByLevel is map && data.starsByLevel.size() <= 500;
+    }
+
+    // Real-time Global Leaderboard (Public non-PII read, strictly owner-scoped verified write)
+    match /leaderboard/{userId} {
+      allow get: if isValidId(userId) && existing().isPublic == true;
+      allow list: if resource.data.isPublic == true;
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidLeaderboardEntry(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidLeaderboardEntry(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'country', 'lang',
+          'score', 'levelsCleared', 'stars', 'streak',
+          'isPublic', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+    }
+
+    // Private User Save State
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidUserProgress(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidUserProgress(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'lang', 'score', 'bulbs',
+          'currentLevelId', 'streak', 'practiceUnlocked',
+          'solvedIds', 'starsByLevel', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+    }
+  }
+}

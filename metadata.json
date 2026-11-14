@@ -1,0 +1,6 @@
+{
+  "name": "BrainSpark 250",
+  "description": "Brain Test lateral-thinking puzzle game with 250 multi-difficulty levels, adaptive smart hints, offline PWA play, relaxing music, multilingual support, and real-time global leaderboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
